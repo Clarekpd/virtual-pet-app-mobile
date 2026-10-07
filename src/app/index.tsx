@@ -81,7 +81,7 @@ const App = () => {
           <Image image={slimeGif} x={x} y={y} width={64} height={48} />
         </Canvas>
         {reaction && (
-          <View pointerEvents="none" style={[styles.reaction, { left: reaction.x, top: reaction.y }]}>
+          <View pointerEvents="none" style={[styles.reaction, { left: reaction.x, top: reaction.y + 16 }]}>
             <Text style={styles.reactionText}>{reaction.text}</Text>
           </View>
         )}
@@ -92,17 +92,16 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingBottom: 8 },
+  screen: { flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 10, paddingBottom: 24 },
   canvasArea: { flex: 1, position: 'relative' },
   canvas: { flex: 1, width: '100%' },
   reaction: {
     position: 'absolute',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: '#292929',
+    borderRadius: 12
   },
-  reactionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+  reactionText: { color: '#FFFFFF', fontSize: 35, fontWeight: '600' },
 });
 
 export default App;

@@ -10,12 +10,12 @@ export type PetAction = {
 };
 
 const ACTIONS: PetAction[] = [
-  { id: 'feed', label: 'Feed', response: 'Yum!', color: '#E6A23C' },
-  { id: 'play', label: 'Play', response: 'So fun!', color: '#62A99A' },
-  { id: 'clean', label: 'Clean', response: 'All fresh!', color: '#6C9BCF' },
-  { id: 'pet', label: 'Pet', response: 'Feeling loved!', color: '#D98080' },
-  { id: 'nap', label: 'Nap', response: 'Sweet dreams!', color: '#8B86B8' },
-  { id: 'treat', label: 'Treat', response: 'A special treat!', color: '#C48A55' },
+  { id: 'feed', label: 'Feed', response: '🍖', color: '#E6A23C' },
+  { id: 'play', label: 'Play', response: '🧸', color: '#62A99A' },
+  { id: 'clean', label: 'Clean', response: '🧽', color: '#6C9BCF' },
+  { id: 'pet', label: 'Pet', response: '❤️', color: '#D98080' },
+  { id: 'nap', label: 'Nap', response: '💤', color: '#8B86B8' },
+  { id: 'treat', label: 'Treat', response: '🥞', color: '#C48A55' },
 ];
 
 type PetInteractionBarProps = {
@@ -63,7 +63,6 @@ function ActionTile({
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={[styles.tile, { borderColor: action.color }, animatedStyle]}>
-        <View style={[styles.actionMark, { backgroundColor: action.color }]} />
         <Text style={styles.tileLabel}>{action.label}</Text>
       </Animated.View>
     </GestureDetector>
@@ -89,11 +88,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: 420,
-    padding: 8,
-    gap: 6,
+    padding: 10,
+    gap: 8,
     borderWidth: 1,
     borderColor: '#464646',
-    borderRadius: 12,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
   },
   row: {
@@ -110,11 +109,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
-  },
-  actionMark: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   tileLabel: {
     color: '#292929',
