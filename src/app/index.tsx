@@ -1,98 +1,108 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import PetInteractionBar, { PetAction } from '@/components/pet-interaction-bar';
+import { Colors } from '@/constants/theme';
+import { Canvas, Image, useAnimatedImageValue } from '@shopify/react-native-skia';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Easing, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+const App = () => {
+  const { width, height } = useWindowDimensions();
+  const scheme = useColorScheme();
+  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+  const slimeGif = useAnimatedImageValue(require('../../assets/pets/slime_base.gif'));
+
+  const x = useSharedValue(Math.max((width - 64) / 2, 0));
+  const y = useSharedValue(Math.max((height - 48) / 2, 0));
+  const canvasRef = useRef<View>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const [reaction, setReaction] = useState<{ text: string; x: number; y: number } | null>(null);
+  const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDropAction = useCallback((action: PetAction, screenX: number, screenY: number) => {
+    canvasRef.current?.measureInWindow((left, top, canvasWidth, canvasHeight) => {
+      if (
+        screenX < left || screenX > left + canvasWidth ||
+        screenY < top || screenY > top + canvasHeight
+      ) {
+        return;
+      }
+
+      const petX = Math.max(0, Math.min(screenX - left - 32, canvasWidth - 64));
+      const petY = Math.max(0, Math.min(screenY - top - 24, canvasHeight - 48));
+      x.value = withTiming(petX, { duration: 450, easing: Easing.out(Easing.cubic) });
+      y.value = withTiming(petY, { duration: 450, easing: Easing.out(Easing.cubic) });
+      setReaction({ text: action.response, x: Math.min(petX + 32, canvasWidth - 90), y: Math.max(petY - 28, 8) });
+
+      if (reactionTimer.current) clearTimeout(reactionTimer.current);
+      reactionTimer.current = setTimeout(() => setReaction(null), 1600);
+    });
+  }, [x, y]);
+
+  useEffect(() => () => {
+    if (reactionTimer.current) clearTimeout(reactionTimer.current);
+  }, []);
+
+  const movePet = useCallback(() => {
+    const canvasWidth = canvasSize.width || width;
+    const canvasHeight = canvasSize.height || height - 106;
+    const nextX = Math.random() * Math.max(canvasWidth - 64, 0);
+    const nextY = Math.random() * Math.max(canvasHeight - 48, 0);
+    const interval = Math.random() * Math.max(10000, 6000);
+
+    // Reanimated shared values are intentionally mutable animation state.
+    // eslint-disable-next-line react-hooks/immutability
+    x.value = withTiming(nextX, {
+      duration: interval,
+      easing: Easing.inOut(Easing.ease),
+    });
+    // eslint-disable-next-line react-hooks/immutability
+    y.value = withTiming(nextY, {
+      duration: interval,
+      easing: Easing.inOut(Easing.ease),
+    });
+  }, [canvasSize, height, width, x, y]);
+
+  useEffect(() => {
+    movePet();
+    const movementTimer = setInterval(movePet, Math.random() * Math.max(10250, 4000));
+    return () => clearInterval(movementTimer);
+  }, [movePet]);
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <GestureHandlerRootView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <View
+        ref={canvasRef}
+        collapsable={false}
+        onLayout={(event) => setCanvasSize(event.nativeEvent.layout)}
+        style={styles.canvasArea}>
+        <Canvas style={styles.canvas}>
+          <Image image={slimeGif} x={x} y={y} width={64} height={48} />
+        </Canvas>
+        {reaction && (
+          <View pointerEvents="none" style={[styles.reaction, { left: reaction.x, top: reaction.y }]}>
+            <Text style={styles.reactionText}>{reaction.text}</Text>
+          </View>
+        )}
+      </View>
+      <PetInteractionBar onDropAction={handleDropAction} />
+    </GestureHandlerRootView>
   );
-}
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+  screen: { flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingBottom: 8 },
+  canvasArea: { flex: 1, position: 'relative' },
+  canvas: { flex: 1, width: '100%' },
+  reaction: {
+    position: 'absolute',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#292929',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  reactionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 });
+
+export default App;
