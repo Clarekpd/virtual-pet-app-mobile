@@ -2,23 +2,57 @@ import PetInteractionBar, { PetAction } from '@/components/pet-interaction-bar';
 import { Colors } from '@/constants/theme';
 import { Canvas, Image, useAnimatedImageValue } from '@shopify/react-native-skia';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Easing, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Easing, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+
+const BASE_GIF = require('../../assets/pets/slime_base.gif');
+const REACTION_GIF_DELAY_MS = 300;
+
+const REACTION_GIFS: Record<string, { source: number; durationMs: number }> = {
+  feed: { source: require('../../assets/pets/slime_feed.gif'), durationMs: 4950 },
+  play: { source: require('../../assets/pets/slime_play.gif'), durationMs: 4050 },
+  treat: { source: require('../../assets/pets/slime_treat.gif'), durationMs: 4950 },
+  sleep: { source: require('../../assets/pets/slime_sleep.gif'), durationMs: 5850 },
+  clean: { source: require('../../assets/pets/slime_clean.gif'), durationMs: 5400 },
+  pet: { source: require('../../assets/pets/slime_pet.gif'), durationMs: 4050 },
+};
+
+function getReactionGif(text: string | undefined) {
+  const reactionText = text?.trim().toLowerCase();
+  return REACTION_GIFS[reactionText === 'nap' ? 'sleep' : reactionText ?? ''];
+}
+
+function PetAnimation({
+  source,
+  x,
+  y,
+}: {
+  source: number;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
+}) {
+  const image = useAnimatedImageValue(source);
+
+  return <Image image={image} x={x} y={y} width={64} height={48} />;
+}
 
 const App = () => {
   const { width, height } = useWindowDimensions();
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const slimeGif = useAnimatedImageValue(require('../../assets/pets/slime_base.gif'));
 
   const x = useSharedValue(Math.max((width - 64) / 2, 0));
   const y = useSharedValue(Math.max((height - 48) / 2, 0));
   const canvasRef = useRef<View>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [reaction, setReaction] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [reaction, setReaction] = useState<{ id: number; text: string } | null>(null);
+  const [gifReaction, setGifReaction] = useState<{ id: number; text: string } | null>(null);
+  const reactionId = useRef(0);
   const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactionDelayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reactionGif = getReactionGif(gifReaction?.text);
 
   const handleDropAction = useCallback((action: PetAction, screenX: number, screenY: number) => {
     canvasRef.current?.measureInWindow((left, top, canvasWidth, canvasHeight) => {
@@ -33,15 +67,24 @@ const App = () => {
       const petY = Math.max(0, Math.min(screenY - top - 24, canvasHeight - 48));
       x.value = withTiming(petX, { duration: 450, easing: Easing.out(Easing.cubic) });
       y.value = withTiming(petY, { duration: 450, easing: Easing.out(Easing.cubic) });
-      setReaction({ text: action.response, x: Math.min(petX + 32, canvasWidth - 90), y: Math.max(petY - 28, 8) });
+      const nextReaction = { id: ++reactionId.current, text: action.response };
+      setReaction(nextReaction);
 
       if (reactionTimer.current) clearTimeout(reactionTimer.current);
-      reactionTimer.current = setTimeout(() => setReaction(null), 1600);
+      if (reactionDelayTimer.current) clearTimeout(reactionDelayTimer.current);
+      reactionDelayTimer.current = setTimeout(() => {
+        setGifReaction(nextReaction);
+        reactionTimer.current = setTimeout(() => {
+          setReaction(null);
+          setGifReaction(null);
+        }, getReactionGif(nextReaction.text)?.durationMs ?? 1600);
+      }, REACTION_GIF_DELAY_MS);
     });
   }, [x, y]);
 
   useEffect(() => () => {
     if (reactionTimer.current) clearTimeout(reactionTimer.current);
+    if (reactionDelayTimer.current) clearTimeout(reactionDelayTimer.current);
   }, []);
 
   const movePet = useCallback(() => {
@@ -78,13 +121,13 @@ const App = () => {
         onLayout={(event) => setCanvasSize(event.nativeEvent.layout)}
         style={styles.canvasArea}>
         <Canvas style={styles.canvas}>
-          <Image image={slimeGif} x={x} y={y} width={64} height={48} />
+          <PetAnimation
+            key={gifReaction?.id ?? 'base'}
+            source={reactionGif?.source ?? BASE_GIF}
+            x={x}
+            y={y}
+          />
         </Canvas>
-        {reaction && (
-          <View pointerEvents="none" style={[styles.reaction, { left: reaction.x, top: reaction.y + 16 }]}>
-            <Text style={styles.reactionText}>{reaction.text}</Text>
-          </View>
-        )}
       </View>
       <PetInteractionBar onDropAction={handleDropAction} />
     </GestureHandlerRootView>
@@ -95,13 +138,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 10, paddingBottom: 24 },
   canvasArea: { flex: 1, position: 'relative' },
   canvas: { flex: 1, width: '100%' },
-  reaction: {
-    position: 'absolute',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12
-  },
-  reactionText: { color: '#FFFFFF', fontSize: 35, fontWeight: '600' },
 });
 
 export default App;

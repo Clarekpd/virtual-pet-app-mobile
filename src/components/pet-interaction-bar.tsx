@@ -10,12 +10,12 @@ export type PetAction = {
 };
 
 const ACTIONS: PetAction[] = [
-  { id: 'feed', label: 'Feed', response: '🍖', color: '#E6A23C' },
-  { id: 'play', label: 'Play', response: '🧸', color: '#62A99A' },
-  { id: 'clean', label: 'Clean', response: '🧽', color: '#6C9BCF' },
-  { id: 'pet', label: 'Pet', response: '❤️', color: '#D98080' },
-  { id: 'nap', label: 'Nap', response: '💤', color: '#8B86B8' },
-  { id: 'treat', label: 'Treat', response: '🥞', color: '#C48A55' },
+  { id: 'feed', label: '🍖', response: 'Feed', color: '#E6A23C' },
+  { id: 'play', label: '🧸', response: 'Play', color: '#62A99A' },
+  { id: 'clean', label: '🧽', response: 'Clean', color: '#6C9BCF' },
+  { id: 'pet', label: '❤️', response: 'Pet', color: '#D98080' },
+  { id: 'nap', label: '💤', response: 'Nap', color: '#8B86B8' },
+  { id: 'treat', label: '🥞', response: 'Treat', color: '#C48A55' },
 ];
 
 type PetInteractionBarProps = {
