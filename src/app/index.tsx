@@ -1,16 +1,13 @@
 import PetInteractionBar, { PetAction } from '@/components/pet-interaction-bar';
+import { useAudioPlayback } from '@/components/audio-playback-provider';
 import { Colors } from '@/constants/theme';
 import { Canvas, Image, useAnimatedImageValue } from '@shopify/react-native-skia';
-import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Easing, runOnJS, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 
 const BASE_GIF = require('../../assets/pets/slime_base.gif');
-const LOVE_PLAY_AUDIO = require('../../assets/audios/audio_slime_love_play.mp3');
-const SLEEP_CLEAN_AUDIO = require('../../assets/audios/audio_slime_sleep_clean.mp3');
-const TREAT_FEED_AUDIO = require('../../assets/audios/audio_slime_treat_feed.mp3');
 const REACTION_GIF_DELAY_MS = 450;
 const PET_WIDTH = 96;
 const PET_HEIGHT = 72;
@@ -54,21 +51,13 @@ const App = () => {
   const x = useSharedValue(Math.max((width - PET_WIDTH) / 2, 0));
   const y = useSharedValue(Math.max((height - PET_HEIGHT) / 2, 0));
   const baseImage = useAnimatedImageValue(BASE_GIF);
-  const lovePlayPlayer = useAudioPlayer(LOVE_PLAY_AUDIO);
-  const sleepCleanPlayer = useAudioPlayer(SLEEP_CLEAN_AUDIO);
-  const treatFeedPlayer = useAudioPlayer(TREAT_FEED_AUDIO);
+  const { playAction } = useAudioPlayback();
   const canvasRef = useRef<View>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [reaction, setReaction] = useState<{ id: number; text: string } | null>(null);
   const [gifReaction, setGifReaction] = useState<{ id: number; text: string } | null>(null);
   const reactionId = useRef(0);
   const reactionGif = getReactionGif(gifReaction?.text);
-
-  useEffect(() => {
-    void setAudioModeAsync({ playsInSilentMode: true }).catch((error: unknown) => {
-      console.error('Failed to configure pet interaction audio', error);
-    });
-  }, []);
 
   const startPetReaction = useCallback((nextReaction: { id: number; text: string }) => {
     setReaction((previousReaction) => ({
@@ -79,33 +68,8 @@ const App = () => {
   }, []);
 
   const playActionAudio = useCallback((actionId: string) => {
-    let player: typeof lovePlayPlayer;
-    switch (actionId) {
-      case 'play':
-      case 'pet':
-        player = lovePlayPlayer;
-        break;
-      case 'nap':
-      case 'clean':
-        player = sleepCleanPlayer;
-        break;
-      case 'feed':
-      case 'treat':
-        player = treatFeedPlayer;
-        break;
-      default:
-        return;
-    }
-
-    lovePlayPlayer.pause();
-    sleepCleanPlayer.pause();
-    treatFeedPlayer.pause();
-    void player.seekTo(0)
-      .then(() => player.play())
-      .catch((error: unknown) => {
-        console.error('Failed to play pet interaction audio', error);
-      });
-  }, [lovePlayPlayer, sleepCleanPlayer, treatFeedPlayer]);
+    playAction(actionId);
+  }, [playAction]);
 
   const handleDoubleTap = useCallback((tapX: number, tapY: number) => {
     const targetX = Math.max(0, Math.min(tapX - PET_WIDTH / 2, canvasSize.width - PET_WIDTH));
