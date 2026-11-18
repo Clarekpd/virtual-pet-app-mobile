@@ -1,5 +1,12 @@
 import PetInteractionBar, { PetAction } from '@/components/pet-interaction-bar';
 import { useAudioPlayback } from '@/components/audio-playback-provider';
+import {
+  decayPetNeeds,
+  INITIAL_PET_NEEDS,
+  PET_NEED_DECAY_INTERVAL_MS,
+  recoverPetNeed,
+  type PetNeeds,
+} from '@/constants/pet-status';
 import { Colors } from '@/constants/theme';
 import { Canvas, Image, useAnimatedImageValue } from '@shopify/react-native-skia';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -56,6 +63,7 @@ const App = () => {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const [reaction, setReaction] = useState<{ id: number; text: string } | null>(null);
   const [gifReaction, setGifReaction] = useState<{ id: number; text: string } | null>(null);
+  const [petNeeds, setPetNeeds] = useState<PetNeeds>(() => ({ ...INITIAL_PET_NEEDS }));
   const reactionId = useRef(0);
   const reactionGif = getReactionGif(gifReaction?.text);
 
@@ -75,6 +83,7 @@ const App = () => {
     const targetX = Math.max(0, Math.min(tapX - PET_WIDTH / 2, canvasSize.width - PET_WIDTH));
     const targetY = Math.max(0, Math.min(tapY - PET_HEIGHT / 2, canvasSize.height - PET_HEIGHT));
     const nextReaction = { id: 0, text: 'Pet' };
+    setPetNeeds((needs) => recoverPetNeed(needs, 'happiness', 15));
     playActionAudio('pet');
     // Reanimated shared values are intentionally mutable animation state.
     // eslint-disable-next-line react-hooks/immutability
@@ -104,6 +113,7 @@ const App = () => {
         return;
       }
 
+      setPetNeeds((needs) => recoverPetNeed(needs, action.need, action.recovery));
       const petX = Math.max(0, Math.min(screenX - left - PET_WIDTH / 2, canvasWidth - PET_WIDTH));
       const petY = Math.max(0, Math.min(screenY - top - PET_HEIGHT / 2, canvasHeight - PET_HEIGHT));
       x.value = withTiming(petX, { duration: 450, easing: Easing.out(Easing.cubic) });
@@ -131,6 +141,13 @@ const App = () => {
     }, getReactionGif(gifReaction.text)?.durationMs ?? 1600);
     return () => clearTimeout(durationTimer);
   }, [gifReaction]);
+
+  useEffect(() => {
+    const decayTimer = setInterval(() => {
+      setPetNeeds(decayPetNeeds);
+    }, PET_NEED_DECAY_INTERVAL_MS);
+    return () => clearInterval(decayTimer);
+  }, []);
 
   const movePet = useCallback(() => {
     const canvasWidth = canvasSize.width || width;
@@ -177,7 +194,7 @@ const App = () => {
         </Canvas>
       </View>
       </GestureDetector>
-      <PetInteractionBar onDropAction={handleDropAction} />
+      <PetInteractionBar needs={petNeeds} onDropAction={handleDropAction} />
     </GestureHandlerRootView>
   );
 };
