@@ -26,11 +26,19 @@ const SLEEP_CLEAN_AUDIO = require('../../assets/audios/audio_slime_sleep_clean.m
 const TREAT_FEED_AUDIO = require('../../assets/audios/audio_slime_treat_feed.mp3');
 
 type ActiveSound = 'lovePlay' | 'sleepClean' | 'treatFeed';
+export type AudioVolumes = {
+  music: number;
+  sounds: number;
+};
+
 type AudioPlaybackContextValue = {
+  audioVolumes: AudioVolumes;
   playAction: (actionId: string) => void;
+  setAudioVolumes: (volumes: AudioVolumes) => void;
 };
 
 const AudioPlaybackContext = createContext<AudioPlaybackContextValue | null>(null);
+const DEFAULT_AUDIO_VOLUMES: AudioVolumes = { music: 1, sounds: 1 };
 
 export function AudioPlaybackProvider({ children }: { children: ReactNode }) {
   const backgroundPlayer = useAudioPlayer(BACKGROUND_MUSIC);
@@ -43,6 +51,7 @@ export function AudioPlaybackProvider({ children }: { children: ReactNode }) {
   const treatFeedStatus = useAudioPlayerStatus(treatFeedPlayer);
   const [audioModeReady, setAudioModeReady] = useState(false);
   const [backgroundShouldPlay, setBackgroundShouldPlay] = useState(true);
+  const [audioVolumes, setAudioVolumes] = useState(DEFAULT_AUDIO_VOLUMES);
   const activeSound = useRef<ActiveSound | null>(null);
   const playRequest = useRef(0);
 
@@ -76,6 +85,25 @@ export function AudioPlaybackProvider({ children }: { children: ReactNode }) {
       backgroundPlayer.play();
     }
   }, [audioModeReady, backgroundPlayer, backgroundShouldPlay, backgroundStatus.isLoaded]);
+
+  useEffect(() => {
+    // expo-audio exposes volume as an imperative AudioPlayer property.
+    // eslint-disable-next-line react-hooks/immutability
+    backgroundPlayer.volume = audioVolumes.music;
+    // eslint-disable-next-line react-hooks/immutability
+    lovePlayPlayer.volume = audioVolumes.sounds;
+    // eslint-disable-next-line react-hooks/immutability
+    sleepCleanPlayer.volume = audioVolumes.sounds;
+    // eslint-disable-next-line react-hooks/immutability
+    treatFeedPlayer.volume = audioVolumes.sounds;
+  }, [
+    audioVolumes.music,
+    audioVolumes.sounds,
+    backgroundPlayer,
+    lovePlayPlayer,
+    sleepCleanPlayer,
+    treatFeedPlayer,
+  ]);
 
   const resumeBackgroundMusic = useCallback(() => {
     activeSound.current = null;
@@ -140,7 +168,10 @@ export function AudioPlaybackProvider({ children }: { children: ReactNode }) {
     treatFeedPlayer,
   ]);
 
-  const value = useMemo(() => ({ playAction }), [playAction]);
+  const value = useMemo(
+    () => ({ audioVolumes, playAction, setAudioVolumes }),
+    [audioVolumes, playAction],
+  );
 
   return (
     <AudioPlaybackContext.Provider value={value}>
